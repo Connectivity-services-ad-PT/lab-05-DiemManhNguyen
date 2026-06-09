@@ -1,0 +1,51 @@
+name: Lab 05 Auto Test
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Create .env file
+        run: cp .env.example .env
+
+      - name: Create class-net network
+        run: docker network create class-net
+
+      - name: Start Docker Compose stack
+        run: docker compose up -d --build
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to initialize..."
+          sleep 20
+          docker compose ps
+          docker compose logs api
+
+      - name: Run Newman tests
+        run: npm run test:compose
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-report
+          path: reports/
+          retention-days: 7
